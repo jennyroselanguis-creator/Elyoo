@@ -1,0 +1,4 @@
+{
+  "url": "https://YOUR_PROJECT_REF.supabase.co",
+  "anonKey": "sb_publishable_xxx or eyJ... (anon key from Supabase → Settings → API)"
+}

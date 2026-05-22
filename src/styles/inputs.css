@@ -1,0 +1,82 @@
+/* Global form fields — readable on beige theme */
+
+html {
+  color-scheme: light;
+}
+
+input,
+select,
+textarea,
+.form-control {
+  color: #3a3228 !important;
+  background-color: #fffdf9 !important;
+  caret-color: #3a3228;
+  -webkit-text-fill-color: #3a3228 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #7d7268 !important;
+  opacity: 1 !important;
+}
+
+input[type='search'] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.form-control:focus {
+  background-color: #ffffff !important;
+  color: #3a3228 !important;
+  outline: none;
+}
+
+/* Header search bar */
+.header-search input {
+  background-color: #ffffff !important;
+  color: #3a3228 !important;
+  border: 1px solid #cfc4b5 !important;
+  font-size: 0.9rem !important;
+}
+
+.header-search input::placeholder {
+  color: #7d7268 !important;
+}
+
+.header-search .search-icon {
+  color: #7d7268 !important;
+}
+
+/* Catalog toolbar & filters */
+.catalog-toolbar .filter-input,
+.catalog-toolbar .filter-select,
+.filter-input,
+.filter-select {
+  background-color: #ffffff !important;
+  color: #3a3228 !important;
+  border: 1px solid #cfc4b5 !important;
+}
+
+.filter-select option {
+  background: #fffdf9;
+  color: #3a3228;
+}
+
+/* Track order forms */
+.track-form input {
+  background-color: #ffffff !important;
+  color: #3a3228 !important;
+  border: 1px solid #cfc4b5 !important;
+}
+
+/* Autofill (Chrome) — keep light */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #3a3228 !important;
+  -webkit-box-shadow: 0 0 0 1000px #fffdf9 inset !important;
+  box-shadow: 0 0 0 1000px #fffdf9 inset !important;
+}

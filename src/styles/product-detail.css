@@ -1,0 +1,124 @@
+.product-detail-page {
+  padding: 2rem 1rem 4rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary-color);
+  text-decoration: none;
+  margin-bottom: 2rem;
+  font-weight: 500;
+}
+
+.product-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+.detail-image-panel {
+  position: relative;
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+}
+
+.detail-image-panel img {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.detail-brand-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: var(--primary-color);
+  color: var(--text-on-dark);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.detail-info-panel h1 {
+  font-size: 2.25rem;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.detail-model,
+.detail-specs {
+  color: var(--text-secondary);
+}
+
+.detail-price {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.detail-stock.in {
+  color: var(--success-color);
+}
+
+.detail-stock.out {
+  color: var(--danger-color);
+}
+
+.detail-actions .qty-input {
+  width: 80px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.btn-wishlist {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 12px 16px;
+}
+
+.btn-wishlist.active {
+  color: var(--accent-rose);
+  border-color: var(--accent-rose);
+}
+
+.detail-trust li {
+  color: var(--text-secondary);
+}
+
+.empty-state-page,
+.product-detail-loading {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: var(--text-primary);
+}
+
+.skeleton-loader {
+  height: 400px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-elevated) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 900px) {
+  .product-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "elyoo-mobile-devices",
+  "displayName": "Elyoo Mobile Devices",
+  "description": "Premium Mobile Devices E-commerce Platform",
+  "version": "2.0.0",
+  "publisher": "elyoo",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "ecommerce",
+    "mobile",
+    "devices",
+    "react",
+    "smartphone",
+    "store"
+  ],
+  "author": {
+    "name": "Elyoo Development Team",
+    "email": "dev@elyoo.com"
+  }
+}

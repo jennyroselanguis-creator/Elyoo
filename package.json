@@ -1,0 +1,55 @@
+{
+  "name": "elyoo-mobile-devices",
+  "version": "2.0.0",
+  "description": "Modern ReactJS e-commerce platform for mobile devices",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.1",
+    "axios": "^1.4.0",
+    "date-fns": "^2.30.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.4.1",
+    "react-icons": "^4.10.1",
+    "react-router-dom": "^6.14.0",
+    "zustand": "^4.3.9"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "react-scripts": "5.0.1",
+    "tailwindcss": "^3.3.0"
+  },
+  "scripts": {
+    "prestart": "node scripts/sync-supabase-config.js",
+    "predev": "node scripts/sync-supabase-config.js",
+    "start": "react-scripts start",
+    "verify:supabase": "node scripts/verify-supabase.mjs",
+    "dev": "react-scripts start",
+    "supabase:setup": "node scripts/setup-supabase.js",
+    "supabase:sync": "node scripts/sync-supabase-config.js",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "proxy": "http://localhost:3001"
+}

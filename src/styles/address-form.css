@@ -1,0 +1,220 @@
+/* Secure structured delivery address */
+
+.delivery-address-section {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.delivery-address-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-color), var(--success-color), var(--primary-color));
+  opacity: 0.8;
+}
+
+.delivery-address-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.delivery-address-title {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.delivery-icon {
+  font-size: 1.75rem;
+  color: var(--primary-color);
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.delivery-address-title h4 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.delivery-address-title p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.address-privacy-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--success-color);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--success-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.delivery-address-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.address-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-select {
+  appearance: none;
+  cursor: pointer;
+  padding-left: 42px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.address-preview-card {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px dashed var(--accent-gold-light);
+  border-radius: 12px;
+}
+
+.address-preview-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary-color);
+  margin-bottom: 0.65rem;
+}
+
+.address-preview-text {
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.address-security-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 1.25rem 0 0;
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border-radius: 10px;
+  border-left: 3px solid var(--success-color);
+}
+
+.address-security-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--success-color);
+}
+
+/* Order display */
+.address-display-block {
+  margin-top: 0.5rem;
+}
+
+.address-display-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary-color);
+  margin-bottom: 0.5rem;
+}
+
+.address-display-lines {
+  font-style: normal;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.address-display-lines span {
+  display: block;
+}
+
+.address-verified-tag {
+  display: inline-block;
+  margin-top: 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--success-color);
+  border: 1px solid var(--accent-gold-light);
+}
+
+.order-address-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.checkout-contact-block {
+  margin-bottom: 0.5rem;
+}
+
+.checkout-section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 1.25rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+@media (max-width: 600px) {
+  .address-row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-address-header {
+    flex-direction: column;
+  }
+}

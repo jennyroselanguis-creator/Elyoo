@@ -1,0 +1,63 @@
+.newsletter-section {
+  margin: 4rem 0 2rem;
+  padding: 3rem 0;
+  background: transparent;
+  border-top: none;
+  border-bottom: none;
+}
+
+.newsletter-section .container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  box-shadow: var(--shadow-premium);
+}
+
+.newsletter-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.newsletter-text h2 {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-family: 'Cormorant Garamond', serif;
+}
+
+.newsletter-text p {
+  color: var(--text-secondary);
+}
+
+.newsletter-form {
+  display: flex;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 280px;
+  max-width: 520px;
+  align-items: flex-end;
+}
+
+.newsletter-field {
+  flex: 1;
+  margin-bottom: 0 !important;
+}
+
+.newsletter-field .form-label {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .newsletter-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .newsletter-form {
+    width: 100%;
+    max-width: none;
+  }
+}
