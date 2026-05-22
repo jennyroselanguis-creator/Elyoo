@@ -437,20 +437,7 @@ async function applyOfflineStockDecrement(resolvedItems) {
   }
 }
 
-export async function createOrder({
-  customer_name,
-  customer_email,
-  customer_phone,
-  customer_address,
-  address_line1,
-  address_line2,
-  address_city,
-  address_province,
-  address_postal,
-  address_country,
-  items,
-  _hp
-}) {
+export async function createOrder({ customer_name, customer_email, customer_phone, customer_address, items, _hp }) {
   if (_hp) throw new Error(SECURE_MESSAGES.ORDER_FAILED);
 
   const cartCheck = validateCartItems(items);
@@ -461,12 +448,6 @@ export async function createOrder({
     customer_email,
     customer_phone,
     customer_address,
-    address_line1,
-    address_line2,
-    address_city,
-    address_province,
-    address_postal,
-    address_country,
   });
   if (!formCheck.valid) {
     const first = Object.values(formCheck.errors)[0];
