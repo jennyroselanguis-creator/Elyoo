@@ -98,4 +98,5 @@ export const statusAPI = {
   get: () => dataService.getConnectionStatus(),
 };
 
-export default { productAPI, brandAPI, cartAPI, authAPI, orderAPI, newsletterAPI, staffAPI };
+const api = { productAPI, brandAPI, cartAPI, authAPI, orderAPI, newsletterAPI, staffAPI };
+export default api;

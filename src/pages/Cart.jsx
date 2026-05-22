@@ -136,16 +136,6 @@ export default function Cart() {
     setErrors(validation.errors);
 
     if (!validation.valid) {
-      const err = validation.errors;
-      const firstError =
-        err.line1 ||
-        err.city ||
-        err.province ||
-        err.postal_code ||
-        err.customer_name ||
-        err.customer_email ||
-        err.customer_phone ||
-        Object.values(err)[0];
       toast.error('Please correct the errors above.');
       return;
     }

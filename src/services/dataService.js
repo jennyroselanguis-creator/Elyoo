@@ -437,7 +437,20 @@ async function applyOfflineStockDecrement(resolvedItems) {
   }
 }
 
-export async function createOrder({ customer_name, customer_email, customer_phone, customer_address, items, _hp }) {
+export async function createOrder({
+  customer_name,
+  customer_email,
+  customer_phone,
+  customer_address,
+  address_line1,
+  address_line2,
+  address_city,
+  address_province,
+  address_postal,
+  address_country,
+  items,
+  _hp
+}) {
   if (_hp) throw new Error(SECURE_MESSAGES.ORDER_FAILED);
 
   const cartCheck = validateCartItems(items);
@@ -448,6 +461,12 @@ export async function createOrder({ customer_name, customer_email, customer_phon
     customer_email,
     customer_phone,
     customer_address,
+    address_line1,
+    address_line2,
+    address_city,
+    address_province,
+    address_postal,
+    address_country,
   });
   if (!formCheck.valid) {
     const first = Object.values(formCheck.errors)[0];
@@ -1096,7 +1115,7 @@ export async function signIn(username, password) {
       if (!error && data?.user) {
         await ensureTeamProfileInCloud(team, data.user.id);
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
