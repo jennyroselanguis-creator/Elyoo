@@ -177,7 +177,7 @@ router.get('/orders', async (req, res, next) => {
     }
 
     const status = req.query.status ? String(req.query.status) : null;
-    let url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/orders?select=*&order=created_at.desc&limit=10000`;
+    let url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/orders?select=*&order=created_at.asc&limit=10000`;
     if (status) url += `&status=eq.${encodeURIComponent(status)}`;
 
     const resp = await fetch(url, {

@@ -61,7 +61,7 @@ router.get('/',
     try {
       const connection = await db.getConnection();
       const [orders] = await connection.execute(
-        'SELECT * FROM orders ORDER BY created_at DESC'
+        'SELECT * FROM orders ORDER BY created_at ASC'
       );
 
       // Parse items JSON

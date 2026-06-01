@@ -76,7 +76,7 @@ SET search_path = public
 AS $$
   SELECT * FROM orders
   WHERE LOWER(customer_email) = LOWER(TRIM(p_email))
-  ORDER BY created_at DESC;
+  ORDER BY created_at ASC;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.track_order(TEXT, TEXT) TO anon, authenticated;

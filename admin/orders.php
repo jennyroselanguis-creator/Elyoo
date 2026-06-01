@@ -31,7 +31,7 @@ if (defined('USE_SUPABASE') && USE_SUPABASE) {
     }
 
     if (!empty($supabaseUrl) && !empty($serviceKey)) {
-        $ordersEndpoint = rtrim($supabaseUrl, '/') . '/rest/v1/orders?select=*&order=created_at.desc&limit=10000';
+        $ordersEndpoint = rtrim($supabaseUrl, '/') . '/rest/v1/orders?select=*&order=created_at.asc&limit=10000';
         if (!empty($status_filter)) {
             $ordersEndpoint .= '&status=eq.' . urlencode($status_filter);
         }
@@ -62,9 +62,9 @@ if (defined('USE_SUPABASE') && USE_SUPABASE) {
 if (empty($orders) && !(defined('USE_SUPABASE') && USE_SUPABASE)) {
     if ($conn !== null) {
         if (!empty($status_filter)) {
-            $orders = $conn->query("SELECT * FROM orders WHERE status='$status_filter' ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+            $orders = $conn->query("SELECT * FROM orders WHERE status='$status_filter' ORDER BY created_at ASC")->fetch_all(MYSQLI_ASSOC);
         } else {
-            $orders = $conn->query("SELECT * FROM orders ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+            $orders = $conn->query("SELECT * FROM orders ORDER BY created_at ASC")->fetch_all(MYSQLI_ASSOC);
         }
     }
 }

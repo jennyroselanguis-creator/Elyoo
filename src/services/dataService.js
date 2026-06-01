@@ -762,7 +762,7 @@ export async function fetchOrdersByEmail(email) {
     const unique = merged.filter(
       (o, i, arr) => arr.findIndex((x) => x.order_number === o.order_number) === i
     );
-    return unique.map(normalizeOrder).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return unique.map(normalizeOrder).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }
 
   const { data, error } = await supabase.rpc('get_orders_by_email', { p_email: mail });
@@ -772,14 +772,14 @@ export async function fetchOrdersByEmail(email) {
       .from('orders')
       .select('*')
       .ilike('customer_email', mail)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true });
     if (fbErr) return localMatches;
     const remote = parseOrderRows(fallback);
     const merged = [...remote, ...localMatches];
     const unique = merged.filter(
       (o, i, arr) => arr.findIndex((x) => x.order_number === o.order_number) === i
     );
-    return unique.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   }
 
   const remote = parseOrderRows(data);
@@ -787,7 +787,7 @@ export async function fetchOrdersByEmail(email) {
   const unique = merged.filter(
     (o, i, arr) => arr.findIndex((x) => x.order_number === o.order_number) === i
   );
-  return unique.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 }
 
 export async function subscribeNewsletter(email) {
