@@ -7,7 +7,7 @@ import { getProductImageSrc } from '../../utils/productImage';
 import { readProductImageFile } from '../../utils/imageUpload';
 import toast from 'react-hot-toast';
 import { MIN_PRODUCT_PRICE } from '../../data/seed';
-
+import { isLocalProductId } from '../../utils/localCatalog';
 
 const emptyForm = {
   name: '',

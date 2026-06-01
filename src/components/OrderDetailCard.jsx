@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { formatPeso } from '../utils/currency';
 import OrderStatusTimeline from './OrderStatusTimeline';
 import AddressDisplay from './AddressDisplay';
+import toast from 'react-hot-toast';
 import '../styles/order-tracking.css';
 import '../styles/address-form.css';
 
@@ -26,9 +27,36 @@ export default function OrderDetailCard({ order }) {
               : '—'}
           </p>
         </div>
-        <span className={`order-status-pill status-${(order.status || 'pending').toLowerCase()}`}>
-          {(order.status || 'pending').charAt(0).toUpperCase() + (order.status || 'pending').slice(1)}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className={`order-status-pill status-${(order.status || 'pending').toLowerCase()}`}>
+            {(order.status || 'pending').charAt(0).toUpperCase() + (order.status || 'pending').slice(1)}
+          </span>
+          {order.status === 'pending' && order.customer_email && (
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={async () => {
+                if (!window.confirm('Are you sure you want to cancel this order?')) return;
+                try {
+                  const resp = await fetch(`/api/orders/${order.id}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: order.customer_email }),
+                  });
+                  const body = await resp.json();
+                  if (!resp.ok) throw new Error(body?.error || body?.message || 'Cancel failed');
+                  toast.success(body.message || 'Order cancelled');
+                  // refresh page to reflect change
+                  setTimeout(() => window.location.reload(), 700);
+                } catch (err) {
+                  toast.error(err.message || 'Unable to cancel order');
+                }
+              }}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
 
       <OrderStatusTimeline status={order.status} />

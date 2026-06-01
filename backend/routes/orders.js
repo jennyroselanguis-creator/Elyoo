@@ -124,7 +124,7 @@ router.put('/:id',
   authenticate,
   authorize(['admin']),
   [
-    body('status').isIn(['pending', 'processing', 'shipped', 'delivered']),
+    body('status').isIn(['pending', 'processing', 'shipped', 'delivered', 'cancelled']),
   ],
   async (req, res, next) => {
     try {
@@ -157,6 +157,53 @@ router.put('/:id',
         success: true,
         message: 'Order updated successfully',
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Cancel order (Customer) - allow a customer to cancel their own pending order
+router.post('/:id/cancel',
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: 'Email required to cancel order' });
+
+      const connection = await db.getConnection();
+      const [orders] = await connection.execute(
+        'SELECT id, status, customer_email FROM orders WHERE id=?',
+        [id]
+      );
+
+      if (orders.length === 0) {
+        connection.release();
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      const order = orders[0];
+      if (String(order.customer_email).toLowerCase() !== String(email).toLowerCase()) {
+        connection.release();
+        return res.status(403).json({ error: 'Email does not match order owner' });
+      }
+
+      if (order.status !== 'pending') {
+        connection.release();
+        return res.status(400).json({ error: 'Only pending orders can be cancelled by the customer' });
+      }
+
+      const [result] = await connection.execute(
+        "UPDATE orders SET status='cancelled', updated_at=NOW() WHERE id=?",
+        [id]
+      );
+      connection.release();
+
+      if (result.affectedRows === 0) {
+        return res.status(500).json({ error: 'Unable to cancel order' });
+      }
+
+      res.json({ success: true, message: 'Order cancelled successfully' });
     } catch (error) {
       next(error);
     }

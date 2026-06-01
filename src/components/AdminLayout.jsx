@@ -25,7 +25,7 @@ const staffNavItems = [
 ];
 
 export default function AdminLayout() {
-  const { user, isAdmin, logout } = useStore();
+  const { user, isAdmin, logout, supabaseConnected, supabaseSource } = useStore();
   const navigate = useNavigate();
   const navItems = isAdmin ? adminNavItems : staffNavItems;
 

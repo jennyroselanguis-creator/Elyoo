@@ -21,10 +21,44 @@ if (isset($_POST['update_status'])) {
 $status_filter = isset($_GET['status']) ? htmlspecialchars($_GET['status']) : '';
 
 // Get orders
-if (!empty($status_filter)) {
-    $orders = $conn->query("SELECT * FROM orders WHERE status='$status_filter' ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
-} else {
-    $orders = $conn->query("SELECT * FROM orders ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+// Get orders (prefer Supabase when configured)
+$orders = [];
+if (defined('USE_SUPABASE') && USE_SUPABASE) {
+    try {
+        $url = rtrim(SUPABASE_URL, '/') . '/rest/v1/orders?select=*&order=created_at.desc';
+        if (!empty($status_filter)) {
+            // add status filter for supabase REST
+            $url .= '&status=eq.' . urlencode($status_filter);
+        }
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'apikey: ' . SUPABASE_ANON_KEY,
+                'Authorization: Bearer ' . SUPABASE_ANON_KEY,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_TIMEOUT => 15,
+        ]);
+        $resp = curl_exec($ch);
+        $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($resp !== false && $http < 400) {
+            $rows = json_decode($resp, true);
+            if (is_array($rows)) $orders = $rows;
+        }
+    } catch (Exception $e) {
+        $orders = [];
+    }
+}
+
+// Fallback to local DB
+if (empty($orders)) {
+    if (!empty($status_filter)) {
+        $orders = $conn->query("SELECT * FROM orders WHERE status='$status_filter' ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+    } else {
+        $orders = $conn->query("SELECT * FROM orders ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+    }
 }
 
 // Get order details
@@ -35,12 +69,44 @@ if (isset($_GET['view'])) {
     if ($order_result->num_rows > 0) {
         $view_order = $order_result->fetch_assoc();
         
-        // Get order items
+        // Get order items (local DB schema)
         $items_result = $conn->query("SELECT oi.*, p.name, p.brand_id, b.name as brand_name FROM order_items oi
                                       JOIN products p ON oi.product_id = p.id
                                       JOIN brands b ON p.brand_id = b.id
                                       WHERE oi.order_id=$order_id");
         $view_order['items'] = $items_result->fetch_all(MYSQLI_ASSOC);
+    } else {
+        // Try to fetch from Supabase when local record not found
+        if (defined('USE_SUPABASE') && USE_SUPABASE) {
+            try {
+                $ch = curl_init(rtrim(SUPABASE_URL, '/') . '/rest/v1/orders?id=eq.' . intval($order_id) . '&select=*');
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER => [
+                        'apikey: ' . SUPABASE_ANON_KEY,
+                        'Authorization: Bearer ' . SUPABASE_ANON_KEY,
+                        'Content-Type: application/json',
+                    ],
+                    CURLOPT_TIMEOUT => 15,
+                ]);
+                $resp = curl_exec($ch);
+                $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                if ($resp !== false && $http < 400) {
+                    $rows = json_decode($resp, true);
+                    if (!empty($rows) && is_array($rows)) {
+                        $row = $rows[0];
+                        $view_order = $row;
+                        // Ensure items array
+                        if (isset($view_order['items']) && is_string($view_order['items'])) {
+                            $view_order['items'] = json_decode($view_order['items'], true) ?: [];
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                // ignore
+            }
+        }
     }
 }
 ?>

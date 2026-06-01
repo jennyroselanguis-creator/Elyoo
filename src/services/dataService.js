@@ -126,17 +126,20 @@ function mergeAllOrders(cloudRows = []) {
   const cloud = (cloudRows || []).map((o) => normalizeOrder(o));
   const local = getLocalOrders();
   const offline = offlineOrders.map((o) => normalizeOrder(o));
-  const byNumber = new Map();
+  const byKey = new Map();
 
   for (const order of [...cloud, ...local, ...offline]) {
-    if (!order?.order_number) continue;
-    const existing = byNumber.get(order.order_number);
+    if (!order) continue;
+    // Use order_number as primary dedup key, fall back to id
+    const key = order.order_number || String(order.id || '');
+    if (!key) continue;
+    const existing = byKey.get(key);
     if (!existing || (order.id && !order.savedLocally)) {
-      byNumber.set(order.order_number, order);
+      byKey.set(key, order);
     }
   }
 
-  return [...byNumber.values()].sort(
+  return [...byKey.values()].sort(
     (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
   );
 }
@@ -401,6 +404,15 @@ export async function fetchOrders() {
     return mergeAllOrders([]);
   }
 
+  // Try the SECURITY DEFINER RPC first — it bypasses RLS so local-session
+  // admin/staff (where auth.uid() is null) can still read all orders.
+  const { data: rpcData, error: rpcError } = await supabase.rpc('get_all_orders');
+
+  if (!rpcError && Array.isArray(rpcData) && rpcData.length > 0) {
+    return mergeAllOrders(rpcData);
+  }
+
+  // Fallback: direct table query (works when authenticated with Supabase session)
   const { data, error } = await supabase
     .from('orders')
     .select('*')
@@ -410,7 +422,17 @@ export async function fetchOrders() {
     console.warn('[Supabase] orders fetch:', error.message);
     return mergeAllOrders([]);
   }
-  return mergeAllOrders(data);
+
+  // If Supabase returned empty due to RLS (0 rows but no error),
+  // log a warning so it's visible in the console.
+  if (!data || data.length === 0) {
+    console.warn(
+      '[Orders] Supabase returned 0 orders — RLS may be blocking reads. ' +
+      'Run supabase/fix_orders_rls.sql in your Supabase SQL Editor to fix this.'
+    );
+  }
+
+  return mergeAllOrders(data || []);
 }
 
 function persistLocalOrder(orderPayload) {
@@ -1096,7 +1118,7 @@ export async function signIn(username, password) {
       if (!error && data?.user) {
         await ensureTeamProfileInCloud(team, data.user.id);
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
