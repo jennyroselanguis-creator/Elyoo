@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { FiUser, FiLock, FiShield } from 'react-icons/fi';
 import { authAPI } from '../api/client';
 import { useStore } from '../store/store';
-import { isAdminRole, isStaffRole } from '../utils/roles';
+import { isStaffRole } from '../utils/roles';
 import FormField from '../components/FormField';
 import { validatePassword } from '../utils/validators';
 import { validateTeamUsername } from '../config/teamAccounts';
@@ -62,7 +62,7 @@ export default function Login() {
       setUser(user);
       toast.success('Welcome back!');
       navigate(
-        isStaffRole(user.role) ? (isAdminRole(user.role) ? '/admin' : '/admin/orders') : '/'
+        isStaffRole(user.role) ? '/admin' : '/'
       );
     } catch (error) {
       toast.error('Incorrect username or password.');

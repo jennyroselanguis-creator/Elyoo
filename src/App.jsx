@@ -27,7 +27,7 @@ import About from './pages/About';
 import TrackOrder from './pages/TrackOrder';
 
 function AppRoutes() {
-  const { isStaff, isAdmin, products } = useStore();
+  const { isStaff, products } = useStore();
   const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
@@ -49,9 +49,9 @@ function AppRoutes() {
 
       <Route element={<RequireStaff />}>
         <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminRoot />} />
           <Route path="/admin/orders" element={<AdminOrders />} />
           <Route element={<RequireAdmin />}>
-            <Route path="/admin" element={<AdminRoot />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/brands" element={<AdminBrands />} />
             <Route path="/admin/staff" element={<AdminStaff />} />
@@ -71,7 +71,7 @@ function AppRoutes() {
       <Route
         path="*"
         element={
-          <Navigate to={isStaff ? (isAdmin ? '/admin' : '/admin/orders') : '/'} replace />
+          <Navigate to={isStaff ? '/admin' : '/'} replace />
         }
       />
     </Routes>
