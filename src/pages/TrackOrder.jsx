@@ -74,6 +74,23 @@ export default function TrackOrder() {
     await loadOrders(myOrdersEmail);
   };
 
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    try {
+      await orderAPI.cancel(orderId);
+      toast.success('Order has been successfully cancelled.');
+
+      setMyOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' } : o))
+      );
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder((prev) => (prev ? { ...prev, status: 'cancelled' } : null));
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to cancel order. Please try again.');
+    }
+  };
+
   return (
     <div className="container orders-page">
       <div className="orders-hero">
@@ -152,7 +169,7 @@ export default function TrackOrder() {
         <section className="orders-detail-panel">
           {selectedOrder ? (
             <div className="form-card orders-detail-card">
-              <OrderDetailCard order={selectedOrder} />
+              <OrderDetailCard order={selectedOrder} onCancel={handleCancelOrder} />
             </div>
           ) : (
             <div className="orders-detail-placeholder form-card">

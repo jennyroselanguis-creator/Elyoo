@@ -63,3 +63,5 @@ define('SUPABASE_URL', getenv('SUPABASE_URL') ?: getenv('REACT_APP_SUPABASE_URL'
 define('SUPABASE_ANON_KEY', getenv('SUPABASE_ANON_KEY') ?: getenv('REACT_APP_SUPABASE_ANON_KEY') ?: '');
 define('SUPABASE_SERVICE_ROLE_KEY', getenv('SUPABASE_SERVICE_ROLE_KEY') ?: '');
 define('USE_SUPABASE', SUPABASE_URL !== '' && SUPABASE_ANON_KEY !== '' && str_contains(SUPABASE_URL, 'supabase'));
+// Backend API URL used by PHP pages to call server endpoints (override with BACKEND_URL env if needed)
+define('BACKEND_URL', getenv('BACKEND_URL') ?: 'http://localhost:3000');

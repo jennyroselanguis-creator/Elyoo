@@ -2,7 +2,6 @@
 
 export const ORDER_TAX_RATE = 0.1;
 export const MIN_ORDER_SUBTOTAL = 10000;
-export const MAX_ORDER_TOTAL = 100_000;
 
 const DISPOSABLE_DOMAINS = new Set([
   'mailinator.com',
@@ -75,10 +74,6 @@ export async function resolveCartFromCatalog(cartItems, fetchProducts) {
 
   const tax = Math.round(subtotal * ORDER_TAX_RATE * 100) / 100;
   const total_amount = Math.round((subtotal + tax) * 100) / 100;
-
-  if (total_amount > MAX_ORDER_TOTAL) {
-    throw new Error('Order total exceeds the allowed maximum');
-  }
 
   return { items: resolved, subtotal, tax, total_amount };
 }

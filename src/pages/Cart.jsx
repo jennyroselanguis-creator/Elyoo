@@ -136,16 +136,6 @@ export default function Cart() {
     setErrors(validation.errors);
 
     if (!validation.valid) {
-      const err = validation.errors;
-      const firstError =
-        err.line1 ||
-        err.city ||
-        err.province ||
-        err.postal_code ||
-        err.customer_name ||
-        err.customer_email ||
-        err.customer_phone ||
-        Object.values(err)[0];
       toast.error('Please correct the errors above.');
       return;
     }
@@ -174,7 +164,7 @@ export default function Cart() {
         navigate(`/orders?email=${encodeURIComponent(validation.values.customer_email)}`);
       }
     } catch (error) {
-      toast.error('Could not place order. Please try again.');
+      toast.error(error.message || 'Could not place order. Please try again.');
     } finally {
       setSubmitting(false);
     }

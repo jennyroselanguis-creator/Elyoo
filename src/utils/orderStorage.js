@@ -49,3 +49,9 @@ export function updateLocalOrderStatus(id, status) {
   localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
   return true;
 }
+
+export function removeLocalOrder(id) {
+  const orders = getLocalOrders();
+  const filtered = orders.filter((o) => String(o.id) !== String(id));
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(filtered));
+}

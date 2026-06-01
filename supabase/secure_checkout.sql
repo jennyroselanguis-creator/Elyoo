@@ -88,10 +88,6 @@ BEGIN
   v_tax := round(v_subtotal * 0.10, 2);
   v_total := round(v_subtotal + v_tax, 2);
 
-  IF v_total > 100000 THEN
-    RAISE EXCEPTION 'Order exceeds maximum allowed total';
-  END IF;
-
   v_order_number := 'ELY-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 10));
 
   INSERT INTO orders (
@@ -124,3 +120,48 @@ $$;
 
 REVOKE ALL ON FUNCTION public.place_secure_order FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.place_secure_order TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.cancel_order_by_customer(p_order_id BIGINT)
+RETURNS SETOF orders
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order orders;
+  v_item JSONB;
+  v_product_id BIGINT;
+  v_qty INT;
+BEGIN
+  SELECT * INTO v_order FROM orders WHERE id = p_order_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order not found';
+  END IF;
+
+  IF LOWER(v_order.status) <> 'pending' THEN
+    RAISE EXCEPTION 'Only pending orders can be cancelled';
+  END IF;
+
+  UPDATE orders
+  SET status = 'cancelled', updated_at = NOW()
+  WHERE id = p_order_id
+  RETURNING * INTO v_order;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(v_order.items)
+  LOOP
+    v_product_id := NULLIF(trim(COALESCE(v_item->>'product_id', v_item->>'id', '')), '')::BIGINT;
+    v_qty := (v_item->>'quantity')::INT;
+
+    IF v_product_id IS NOT NULL AND v_qty > 0 THEN
+      UPDATE products
+      SET stock = stock + v_qty, updated_at = NOW()
+      WHERE id = v_product_id;
+    END IF;
+  END LOOP;
+
+  RETURN NEXT v_order;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.cancel_order_by_customer FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.cancel_order_by_customer TO anon, authenticated;

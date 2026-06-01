@@ -17,17 +17,8 @@ if ($_SESSION['admin_role'] === 'admin') {
     if (isset($_POST['save_staff'])) {
         $username = htmlspecialchars($_POST['username']);
         $email = htmlspecialchars($_POST['email']);
+        $role = htmlspecialchars($_POST['role']);
         $staff_id = isset($_POST['staff_id']) ? intval($_POST['staff_id']) : 0;
-
-        // Ensure role cannot be elevated via form tampering.
-        if ($staff_id > 0) {
-            $r = $conn->query("SELECT role FROM admins WHERE id=$staff_id");
-            $row = $r ? $r->fetch_assoc() : null;
-            $role = $row['role'] ?? 'staff';
-        } else {
-            // New accounts created from this page are always staff
-            $role = 'staff';
-        }
 
         if (empty($username) || empty($email)) {
             $message = '<div class="alert alert-danger">Username and email are required!</div>';
@@ -109,19 +100,36 @@ if ($_SESSION['admin_role'] === 'admin') {
     }
 }
 
-// Get all staff
-$staff = $conn->query("SELECT id, username, email, role, created_at FROM admins ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+// Get all staff (local MySQL only; $conn may be null in Supabase-only mode)
+$staff = ($conn !== null)
+    ? $conn->query("SELECT id, username, email, role, created_at FROM admins ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC)
+    : [];
 
-// Also load recent orders to display on this page (prefer Supabase if configured)
+// Fetch orders directly from Supabase REST API using the service role key
 $orders = [];
+$ordersError = '';
 if (defined('USE_SUPABASE') && USE_SUPABASE) {
-    try {
-        $backendUrl = 'http://localhost:3001/api/supabase/orders';
-        $ch = curl_init($backendUrl);
+    $supabaseUrl = defined('SUPABASE_URL') ? SUPABASE_URL : '';
+    $serviceKey  = defined('SUPABASE_SERVICE_ROLE_KEY') ? SUPABASE_SERVICE_ROLE_KEY : '';
+    // Fall back to anon key if no service key is set
+    if (empty($serviceKey)) {
+        $serviceKey = defined('SUPABASE_ANON_KEY') ? SUPABASE_ANON_KEY : '';
+    }
+
+    if (!empty($supabaseUrl) && !empty($serviceKey)) {
+        $ordersEndpoint = rtrim($supabaseUrl, '/') . '/rest/v1/orders?select=*&order=created_at.desc&limit=10000';
+        $ch = curl_init($ordersEndpoint);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => [
+                'apikey: ' . $serviceKey,
+                'Authorization: Bearer ' . $serviceKey,
+                'Content-Type: application/json',
+                'Range: 0-9999',
+                'Range-Unit: items',
+                'Prefer: count=exact',
+            ],
+            CURLOPT_TIMEOUT => 30,
         ]);
         $resp = curl_exec($ch);
         $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -130,28 +138,15 @@ if (defined('USE_SUPABASE') && USE_SUPABASE) {
             $rows = json_decode($resp, true);
             if (is_array($rows)) {
                 $orders = $rows;
+            } else {
+                $ordersError = 'Unexpected response from Supabase.';
             }
+        } else {
+            $ordersError = 'Failed to fetch orders from Supabase (HTTP ' . $http . ').';
         }
-    } catch (Exception $e) {
-        $orders = [];
+    } else {
+        $ordersError = 'Supabase URL or service key is not configured.';
     }
-}
-
-// Fallback to local DB if no supabase rows
-if (empty($orders)) {
-    try {
-        $orders = $conn->query("SELECT id, order_number, customer_name, customer_email, total_amount, status, created_at FROM orders ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
-    } catch (Exception $e) {
-        $orders = [];
-    }
-}
-
-// Group orders by status for display
-$orders_by_status = [];
-foreach ($orders as $o) {
-    $st = isset($o['status']) && $o['status'] !== '' ? $o['status'] : 'pending';
-    if (!isset($orders_by_status[$st])) $orders_by_status[$st] = [];
-    $orders_by_status[$st][] = $o;
 }
 ?>
 
@@ -240,6 +235,50 @@ foreach ($orders as $o) {
             </div>
         </div>
         <?php endif; ?>
+        <!-- Orders from Supabase (visible to staff and admin) -->
+        <div style="max-width: 1000px; margin-top: 40px;">
+            <div style="margin-top: 20px;">
+                <h2>Orders (Supabase)</h2>
+                <?php if (!empty($orders)): ?>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Email</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($orders as $order): ?>
+                        <tr>
+                            <td>#<?php echo htmlspecialchars($order['id'] ?? $order['order_number'] ?? ''); ?></td>
+                            <td><?php echo htmlspecialchars($order['customer_name'] ?? $order['customer']); ?></td>
+                            <td><?php echo htmlspecialchars($order['customer_email'] ?? $order['email'] ?? ''); ?></td>
+                            <td>$<?php echo number_format(floatval($order['total_amount'] ?? $order['amount'] ?? 0), 2); ?></td>
+                            <td><?php echo ucfirst(htmlspecialchars($order['status'] ?? '')); ?></td>
+                            <td><?php echo isset($order['created_at']) ? date('M d, Y', strtotime($order['created_at'])) : ''; ?></td>
+                            <td>
+                                <a href="orders.php?view=<?php echo urlencode($order['id'] ?? $order['order_number'] ?? ''); ?>" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;">View</a>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php else: ?>
+                    <div class="alert alert-info">
+                        <?php if (!empty($ordersError)): ?>
+                            No orders could be loaded. <?php echo htmlspecialchars($ordersError); ?>
+                        <?php else: ?>
+                            No orders found in Supabase.
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
 
         <!-- Staff List - Visible to everyone -->
         <div style="max-width: 900px;">
@@ -290,50 +329,6 @@ foreach ($orders as $o) {
                 </table>
             </div>
         </div>
-        
-                <!-- Orders List - grouped by status -->
-                <div style="max-width: 900px; margin-top: 40px;">
-                    <h2>Orders by Status</h2>
-                    <?php
-                    $statusOrder = ['pending', 'processing', 'shipped', 'delivered', 'completed', 'cancelled', 'cancelled_by_user'];
-                    foreach ($statusOrder as $st):
-                        if (!isset($orders_by_status[$st]) || empty($orders_by_status[$st])) continue;
-                    ?>
-                        <div style="margin-top: 20px;">
-                            <h3 style="margin-bottom:10px; text-transform: capitalize;"><?php echo htmlspecialchars($st); ?> (<?php echo count($orders_by_status[$st]); ?>)</h3>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Order #</th>
-                                        <th>Customer</th>
-                                        <th>Email</th>
-                                        <th>Amount</th>
-                                        <th>Date</th>
-                                        <?php if ($_SESSION['admin_role'] === 'admin'): ?>
-                                        <th>Actions</th>
-                                        <?php endif; ?>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($orders_by_status[$st] as $o): ?>
-                                        <tr>
-                                            <td>#<?php echo htmlspecialchars($o['order_number'] ?? $o['id']); ?></td>
-                                            <td><?php echo htmlspecialchars($o['customer_name'] ?? ($o['name'] ?? '')); ?></td>
-                                            <td><?php echo htmlspecialchars($o['customer_email'] ?? ($o['email'] ?? '')); ?></td>
-                                            <td>₱<?php echo number_format(floatval($o['total_amount'] ?? 0), 2); ?></td>
-                                            <td><?php echo date('M d, Y', strtotime($o['created_at'] ?? ($o['created_at'] ?? ''))); ?></td>
-                                            <?php if ($_SESSION['admin_role'] === 'admin'): ?>
-                                            <td>
-                                                <a href="orders.php?view=<?php echo intval($o['id'] ?? 0); ?>" class="btn btn-primary" style="padding: 5px 10px; font-size: 12px;">View</a>
-                                            </td>
-                                            <?php endif; ?>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
     </div>
 </body>
 </html>

@@ -20,19 +20,33 @@ if (isset($_POST['update_status'])) {
 // Get filter
 $status_filter = isset($_GET['status']) ? htmlspecialchars($_GET['status']) : '';
 
-// Get orders
-// Get orders (prefer Supabase when configured)
+// Get orders — query Supabase REST API directly using the service role key
 $orders = [];
+$ordersError = '';
 if (defined('USE_SUPABASE') && USE_SUPABASE) {
-    // Prefer server-side backend endpoint which uses the service role key
-    try {
-        $backendUrl = 'http://localhost:3001/api/supabase/orders';
-        if (!empty($status_filter)) $backendUrl .= '?status=' . urlencode($status_filter);
-        $ch = curl_init($backendUrl);
+    $supabaseUrl = defined('SUPABASE_URL') ? SUPABASE_URL : '';
+    $serviceKey  = defined('SUPABASE_SERVICE_ROLE_KEY') ? SUPABASE_SERVICE_ROLE_KEY : '';
+    if (empty($serviceKey)) {
+        $serviceKey = defined('SUPABASE_ANON_KEY') ? SUPABASE_ANON_KEY : '';
+    }
+
+    if (!empty($supabaseUrl) && !empty($serviceKey)) {
+        $ordersEndpoint = rtrim($supabaseUrl, '/') . '/rest/v1/orders?select=*&order=created_at.desc&limit=10000';
+        if (!empty($status_filter)) {
+            $ordersEndpoint .= '&status=eq.' . urlencode($status_filter);
+        }
+        $ch = curl_init($ordersEndpoint);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => [
+                'apikey: ' . $serviceKey,
+                'Authorization: Bearer ' . $serviceKey,
+                'Content-Type: application/json',
+                'Range: 0-9999',
+                'Range-Unit: items',
+                'Prefer: count=exact',
+            ],
+            CURLOPT_TIMEOUT => 30,
         ]);
         $resp = curl_exec($ch);
         $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -41,17 +55,17 @@ if (defined('USE_SUPABASE') && USE_SUPABASE) {
             $rows = json_decode($resp, true);
             if (is_array($rows)) $orders = $rows;
         }
-    } catch (Exception $e) {
-        $orders = [];
     }
 }
 
-// Fallback to local DB
-if (empty($orders)) {
-    if (!empty($status_filter)) {
-        $orders = $conn->query("SELECT * FROM orders WHERE status='$status_filter' ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
-    } else {
-        $orders = $conn->query("SELECT * FROM orders ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+// Only fallback to local DB when Supabase is not configured
+if (empty($orders) && !(defined('USE_SUPABASE') && USE_SUPABASE)) {
+    if ($conn !== null) {
+        if (!empty($status_filter)) {
+            $orders = $conn->query("SELECT * FROM orders WHERE status='$status_filter' ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+        } else {
+            $orders = $conn->query("SELECT * FROM orders ORDER BY created_at DESC")->fetch_all(MYSQLI_ASSOC);
+        }
     }
 }
 
@@ -59,47 +73,33 @@ if (empty($orders)) {
 $view_order = null;
 if (isset($_GET['view'])) {
     $order_id = intval($_GET['view']);
-    $order_result = $conn->query("SELECT * FROM orders WHERE id=$order_id");
-    if ($order_result->num_rows > 0) {
-        $view_order = $order_result->fetch_assoc();
-        
-        // Get order items (local DB schema)
-        $items_result = $conn->query("SELECT oi.*, p.name, p.brand_id, b.name as brand_name FROM order_items oi
-                                      JOIN products p ON oi.product_id = p.id
-                                      JOIN brands b ON p.brand_id = b.id
-                                      WHERE oi.order_id=$order_id");
-        $view_order['items'] = $items_result->fetch_all(MYSQLI_ASSOC);
-    } else {
-        // Try to fetch from Supabase when local record not found
-        if (defined('USE_SUPABASE') && USE_SUPABASE) {
-            try {
-                $ch = curl_init(rtrim(SUPABASE_URL, '/') . '/rest/v1/orders?id=eq.' . intval($order_id) . '&select=*');
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_HTTPHEADER => [
-                        'apikey: ' . SUPABASE_ANON_KEY,
-                        'Authorization: Bearer ' . SUPABASE_ANON_KEY,
-                        'Content-Type: application/json',
-                    ],
-                    CURLOPT_TIMEOUT => 15,
-                ]);
-                $resp = curl_exec($ch);
-                $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                if ($resp !== false && $http < 400) {
-                    $rows = json_decode($resp, true);
-                    if (!empty($rows) && is_array($rows)) {
-                        $row = $rows[0];
-                        $view_order = $row;
-                        // Ensure items array
-                        if (isset($view_order['items']) && is_string($view_order['items'])) {
-                            $view_order['items'] = json_decode($view_order['items'], true) ?: [];
-                        }
-                    }
-                }
-            } catch (Exception $e) {
-                // ignore
+    // If we have orders from Supabase, try to find the order there
+    if (!empty($orders)) {
+        foreach ($orders as $o) {
+            if (isset($o['id']) && intval($o['id']) === $order_id) {
+                $view_order = $o;
+                break;
             }
+            if (isset($o['order_number']) && intval($o['order_number']) === $order_id) {
+                $view_order = $o;
+                break;
+            }
+        }
+        if ($view_order && isset($view_order['items']) && is_string($view_order['items'])) {
+            $view_order['items'] = json_decode($view_order['items'], true) ?: [];
+        }
+    }
+
+    // If not found and Supabase is not in use, try local DB as last resort
+    if (!$view_order && !(defined('USE_SUPABASE') && USE_SUPABASE)) {
+        $order_result = $conn->query("SELECT * FROM orders WHERE id=$order_id");
+        if ($order_result->num_rows > 0) {
+            $view_order = $order_result->fetch_assoc();
+            $items_result = $conn->query("SELECT oi.*, p.name, p.brand_id, b.name as brand_name FROM order_items oi
+                                          JOIN products p ON oi.product_id = p.id
+                                          JOIN brands b ON p.brand_id = b.id
+                                          WHERE oi.order_id=$order_id");
+            $view_order['items'] = $items_result->fetch_all(MYSQLI_ASSOC);
         }
     }
 }

@@ -10,6 +10,7 @@ import {
   normalizeOrder,
   saveOrderLocally,
   updateLocalOrderStatus,
+  removeLocalOrder,
 } from '../utils/orderStorage';
 import {
   validateCheckoutForm,
@@ -128,19 +129,21 @@ function mergeAllOrders(cloudRows = []) {
   const offline = offlineOrders.map((o) => normalizeOrder(o));
   const byKey = new Map();
 
+  // Use order_number when available, otherwise fall back to id-based key so
+  // older or externally-imported orders without `order_number` are included.
   for (const order of [...cloud, ...local, ...offline]) {
     if (!order) continue;
-    // Use order_number as primary dedup key, fall back to id
-    const key = order.order_number || String(order.id || '');
+    const key = order.order_number ? String(order.order_number) : order.id ? `id:${order.id}` : null;
     if (!key) continue;
     const existing = byKey.get(key);
+    // Prefer non-local saved rows when replacing
     if (!existing || (order.id && !order.savedLocally)) {
       byKey.set(key, order);
     }
   }
 
   return [...byKey.values()].sort(
-    (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+    (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)
   );
 }
 
@@ -400,39 +403,55 @@ export async function deleteBrand(id) {
 }
 
 export async function fetchOrders() {
-  if (!isSupabaseConfigured()) {
-    return mergeAllOrders([]);
+  // If Supabase is not configured, return merged local orders only
+  if (!isSupabaseConfigured()) return mergeAllOrders([]);
+
+  // Try server-side backend proxy first (uses service role key) so staff/admin see all orders.
+  try {
+    // Try a list of possible backend proxy hosts so dev setups on :3001 still work.
+    const candidates = [];
+    if (process.env.REACT_APP_BACKEND_URL) candidates.push(process.env.REACT_APP_BACKEND_URL);
+    if (typeof window !== 'undefined' && window.location) {
+      const proto = window.location.protocol;
+      const host = window.location.hostname;
+      candidates.push(`${proto}//${host}:3000`);
+      candidates.push(`${proto}//${host}:3001`);
+    }
+    candidates.push('http://localhost:3000');
+    candidates.push('http://localhost:3001');
+
+    for (const c of candidates) {
+      if (!c) continue;
+      try {
+        const url = `${String(c).replace(/\/$/, '')}/api/supabase/orders`;
+        const resp = await fetch(url);
+        if (resp.ok) {
+          const rows = await resp.json();
+          return mergeAllOrders(rows || []);
+        }
+      } catch (err) {
+        // try next candidate
+        // eslint-disable-next-line no-console
+        console.debug('[Orders] backend proxy attempt failed for', c, err?.message || err);
+      }
+    }
+    console.warn('[Orders] backend supabase proxy failed for all candidates');
+    // Fall back to client-side Supabase fetch below
+  } catch (err) {
+    console.warn('[Orders] backend supabase proxy error:', err?.message || err);
+    // Fall back to client-side Supabase fetch below
   }
 
-  // Try the SECURITY DEFINER RPC first — it bypasses RLS so local-session
-  // admin/staff (where auth.uid() is null) can still read all orders.
-  const { data: rpcData, error: rpcError } = await supabase.rpc('get_all_orders');
-
-  if (!rpcError && Array.isArray(rpcData) && rpcData.length > 0) {
-    return mergeAllOrders(rpcData);
-  }
-
-  // Fallback: direct table query (works when authenticated with Supabase session)
   const { data, error } = await supabase
     .from('orders')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
 
   if (error) {
     console.warn('[Supabase] orders fetch:', error.message);
     return mergeAllOrders([]);
   }
-
-  // If Supabase returned empty due to RLS (0 rows but no error),
-  // log a warning so it's visible in the console.
-  if (!data || data.length === 0) {
-    console.warn(
-      '[Orders] Supabase returned 0 orders — RLS may be blocking reads. ' +
-      'Run supabase/fix_orders_rls.sql in your Supabase SQL Editor to fix this.'
-    );
-  }
-
-  return mergeAllOrders(data || []);
+  return mergeAllOrders(data);
 }
 
 function persistLocalOrder(orderPayload) {
@@ -557,50 +576,35 @@ export async function createOrder({ customer_name, customer_email, customer_phon
 }
 
 export async function updateOrderStatus(id, status) {
+  if (status === 'cancelled') {
+    throw new Error('Admin/Staff cannot set an order status to cancelled.');
+  }
   const sid = String(id);
 
-  // 1. Try updating locally-saved orders first (browser localStorage)
-  if (updateLocalOrderStatus(sid, status)) {
-    const offline = offlineOrders.find((o) => String(o.id) === sid);
-    if (offline) offline.status = status;
-    return;
-  }
-
-  // 2. Also update the in-memory offline array if present
+  // 1. Update local storage/offline cache first to keep the UI in sync
+  updateLocalOrderStatus(sid, status);
   const offlineMatch = offlineOrders.find((o) => String(o.id) === sid);
   if (offlineMatch) {
     offlineMatch.status = status;
     saveOrderLocally(offlineMatch);
+  } else {
+    // If not in offlineOrders, sync changes in local general storage
+    const localOrders = getLocalOrders();
+    const found = localOrders.find((o) => String(o.id) === sid);
+    if (found) {
+      found.status = status;
+      found.updated_at = new Date().toISOString();
+      saveOrderLocally(found);
+    }
   }
 
-  // 3. No Supabase configured — purely local/offline mode
+  // 2. If Supabase is not configured, we're in local-only offline mode
   if (!isSupabaseConfigured()) {
-    if (!offlineMatch) {
-      // Try to find in local orders list by order_number as well
-      const localOrders = getLocalOrders();
-      const found = localOrders.find((o) => String(o.id) === sid);
-      if (found) {
-        found.status = status;
-        found.updated_at = new Date().toISOString();
-        saveOrderLocally(found);
-      }
-    }
     return;
   }
 
-  // 4. Local team session (staff/admin logged in with local credentials)
-  //    — update locally but also attempt cloud update if possible
+  // 3. Local team session (staff/admin logged in with local credentials)
   if (isLocalTeamSession()) {
-    if (!offlineMatch) {
-      // Save the status change locally so it persists for this browser
-      const localOrders = getLocalOrders();
-      const found = localOrders.find((o) => String(o.id) === sid);
-      if (found) {
-        found.status = status;
-        found.updated_at = new Date().toISOString();
-        saveOrderLocally(found);
-      }
-    }
     // Still try to update in Supabase (service-level, no auth required for SECURITY DEFINER)
     const cloudId = Number(id);
     if (Number.isInteger(cloudId) && cloudId > 0) {
@@ -620,7 +624,7 @@ export async function updateOrderStatus(id, status) {
     return;
   }
 
-  // 5. Cloud session — any authenticated admin or staff can update any order
+  // 4. Cloud session — update in Supabase
   const cloudId = Number(id);
   if (!Number.isInteger(cloudId) || cloudId <= 0) {
     throw new Error('Invalid order id');
@@ -631,6 +635,60 @@ export async function updateOrderStatus(id, status) {
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', cloudId);
   if (error) throw new Error(formatSupabaseError(error));
+}
+
+export async function deleteOrder(id) {
+  const sid = String(id);
+
+  // 1. Remove from local browser storage
+  removeLocalOrder(sid);
+
+  // 2. Remove from in-memory offline orders array
+  offlineOrders = offlineOrders.filter((o) => String(o.id) !== sid);
+
+  // 3. Remove from Supabase
+  if (isSupabaseConfigured()) {
+    const cloudId = Number(id);
+    if (Number.isInteger(cloudId) && cloudId > 0) {
+      const { error } = await supabase.from('orders').delete().eq('id', cloudId);
+      if (error) {
+        console.warn('[Orders] Supabase delete failed:', error.message);
+      }
+    }
+  }
+}
+
+export async function cancelCustomerOrder(id) {
+  const sid = String(id);
+
+  // 1. Update local storage to cancelled
+  updateLocalOrderStatus(sid, 'cancelled');
+
+  // 2. Update offline cache
+  const offlineMatch = offlineOrders.find((o) => String(o.id) === sid);
+  if (offlineMatch) {
+    offlineMatch.status = 'cancelled';
+    saveOrderLocally(offlineMatch);
+  } else {
+    const localOrders = getLocalOrders();
+    const found = localOrders.find((o) => String(o.id) === sid);
+    if (found) {
+      found.status = 'cancelled';
+      found.updated_at = new Date().toISOString();
+      saveOrderLocally(found);
+    }
+  }
+
+  // 3. RPC call to cancel_order_by_customer securely
+  if (isSupabaseConfigured()) {
+    const cloudId = Number(id);
+    if (Number.isInteger(cloudId) && cloudId > 0) {
+      const { error } = await supabase.rpc('cancel_order_by_customer', { p_order_id: cloudId });
+      if (error) {
+        throw new Error(formatSupabaseError(error));
+      }
+    }
+  }
 }
 
 function parseOrderRows(data) {
@@ -1118,7 +1176,7 @@ export async function signIn(username, password) {
       if (!error && data?.user) {
         await ensureTeamProfileInCloud(team, data.user.id);
 
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)

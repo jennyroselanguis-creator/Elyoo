@@ -101,8 +101,9 @@ export default function AdminOrders() {
                       value={order.status}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
                       className="status-select"
+                      disabled={(order.status || '').toLowerCase() === 'cancelled'}
                     >
-                      {STATUS_OPTIONS.map((s) => (
+                      {STATUS_OPTIONS.filter((s) => s !== 'cancelled' || (order.status || '').toLowerCase() === 'cancelled').map((s) => (
                         <option key={s} value={s}>
                           {s.charAt(0).toUpperCase() + s.slice(1)}
                         </option>

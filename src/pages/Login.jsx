@@ -105,7 +105,7 @@ export default function Login() {
               error={touched.username ? errors.username : undefined}
               required
               maxLength={32}
-              placeholder="jireh or jai"
+              placeholder="Enter your username"
               autoComplete="username"
               icon={FiUser}
             />

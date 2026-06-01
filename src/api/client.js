@@ -69,6 +69,14 @@ export const orderAPI = {
     await dataService.updateOrderStatus(id, status);
     return { data: { success: true } };
   },
+  delete: async (id) => {
+    await dataService.deleteOrder(id);
+    return { data: { success: true } };
+  },
+  cancel: async (id) => {
+    await dataService.cancelCustomerOrder(id);
+    return { data: { success: true } };
+  },
   track: async (orderNumber, email) => ({
     data: { success: true, data: await dataService.trackOrder(orderNumber, email) },
   }),
@@ -98,4 +106,6 @@ export const statusAPI = {
   get: () => dataService.getConnectionStatus(),
 };
 
-export default { productAPI, brandAPI, cartAPI, authAPI, orderAPI, newsletterAPI, staffAPI };
+const apiClient = { productAPI, brandAPI, cartAPI, authAPI, orderAPI, newsletterAPI, staffAPI };
+
+export default apiClient;

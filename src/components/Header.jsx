@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { FiShoppingCart, FiMenu, FiX, FiSearch, FiPackage, FiLogIn } from 'react-icons/fi';
 import { useStore } from '../store/store';
 import '../styles/header.css';
@@ -13,8 +13,7 @@ function navLinkClassName({ isActive }, extra = '') {
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { cart, searchQuery, setSearchQuery, supabaseConnected } = useStore();
-  const { pathname } = useLocation();
-  const onLogin = pathname === '/login';
+  
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const closeMenu = () => setMobileMenuOpen(false);

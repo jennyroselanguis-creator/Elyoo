@@ -7,7 +7,6 @@ import { getProductImageSrc } from '../../utils/productImage';
 import { readProductImageFile } from '../../utils/imageUpload';
 import toast from 'react-hot-toast';
 import { MIN_PRODUCT_PRICE } from '../../data/seed';
-import { isLocalProductId } from '../../utils/localCatalog';
 
 const emptyForm = {
   name: '',
@@ -26,10 +25,12 @@ export default function AdminProducts() {
   const [formData, setFormData] = useState(emptyForm);
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
 
   const resetForm = () => {
     setFormData(emptyForm);
     setImagePreview('');
+    setEditingProductId(null);
   };
 
   const handleImageChange = async (e) => {
@@ -89,6 +90,39 @@ export default function AdminProducts() {
     }
   };
 
+  const handleEditClick = (product) => {
+    setFormData({
+      name: product.name || '',
+      model: product.model || '',
+      brand_id: product.brand_id || '',
+      price: String(product.price || ''),
+      stock: String(product.stock || ''),
+      specs: product.specs || product.description || '',
+      image: product.image || '',
+      featured: Boolean(product.featured),
+    });
+    setEditingProductId(product.id);
+    setImagePreview(product.image || '');
+    setShowForm(true);
+  };
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    try {
+      await productAPI.update(editingProductId, {
+        ...formData,
+        image: formData.image || imagePreview,
+      });
+      const refreshed = await productAPI.getAll();
+      setProducts(refreshed.data.data || []);
+      toast.success('Product updated successfully.');
+      resetForm();
+      setShowForm(false);
+    } catch (error) {
+      toast.error('Could not update product. Please try again.');
+    }
+  };
+
   return (
     <div className="admin-page">
       <header className="admin-page-header">
@@ -112,8 +146,8 @@ export default function AdminProducts() {
 
       {showForm && (
         <div className="admin-form">
-          <h3>Add new product</h3>
-          <form onSubmit={handleAddProduct}>
+          <h3>{editingProductId ? 'Edit product' : 'Add new product'}</h3>
+          <form onSubmit={editingProductId ? handleUpdateProduct : handleAddProduct}>
             <div className="product-image-upload">
               <label className="upload-label">
                 <FiImage aria-hidden="true" /> Product photo <span className="required-mark">*</span>
@@ -270,7 +304,12 @@ export default function AdminProducts() {
                 <td>{formatPeso(product.price)}</td>
                 <td>{product.stock}</td>
                 <td className="actions">
-                  <button type="button" className="btn-icon" title="Edit (coming soon)" disabled>
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    onClick={() => handleEditClick(product)}
+                    title="Edit"
+                  >
                     <FiEdit />
                   </button>
                   <button
