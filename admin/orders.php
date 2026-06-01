@@ -24,20 +24,14 @@ $status_filter = isset($_GET['status']) ? htmlspecialchars($_GET['status']) : ''
 // Get orders (prefer Supabase when configured)
 $orders = [];
 if (defined('USE_SUPABASE') && USE_SUPABASE) {
+    // Prefer server-side backend endpoint which uses the service role key
     try {
-        $url = rtrim(SUPABASE_URL, '/') . '/rest/v1/orders?select=*&order=created_at.desc';
-        if (!empty($status_filter)) {
-            // add status filter for supabase REST
-            $url .= '&status=eq.' . urlencode($status_filter);
-        }
-        $ch = curl_init($url);
+        $backendUrl = 'http://localhost:3001/api/supabase/orders';
+        if (!empty($status_filter)) $backendUrl .= '?status=' . urlencode($status_filter);
+        $ch = curl_init($backendUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
-                'apikey: ' . SUPABASE_ANON_KEY,
-                'Authorization: Bearer ' . SUPABASE_ANON_KEY,
-                'Content-Type: application/json',
-            ],
+            CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
             CURLOPT_TIMEOUT => 15,
         ]);
         $resp = curl_exec($ch);

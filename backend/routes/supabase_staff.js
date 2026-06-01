@@ -167,4 +167,37 @@ router.post('/staff/reset', async (req, res, next) => {
   }
 });
 
+// Get all orders (admin-only server-side endpoint using service role key)
+router.get('/orders', async (req, res, next) => {
+  try {
+    const SUPABASE_URL = process.env.SUPABASE_URL || '';
+    const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (!SUPABASE_URL || !SERVICE_KEY) {
+      return res.status(500).json({ error: 'Supabase service role key not configured on server' });
+    }
+
+    const status = req.query.status ? String(req.query.status) : null;
+    let url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/orders?select=*&order=created_at.desc`;
+    if (status) url += `&status=eq.${encodeURIComponent(status)}`;
+
+    const resp = await fetch(url, {
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const body = await resp.text();
+    const http = resp.status;
+    if (!resp.ok) return res.status(http).json({ error: 'Supabase request failed', body });
+
+    const data = JSON.parse(body || '[]');
+    return res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
+

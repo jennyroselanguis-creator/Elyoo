@@ -116,14 +116,11 @@ $staff = $conn->query("SELECT id, username, email, role, created_at FROM admins 
 $orders = [];
 if (defined('USE_SUPABASE') && USE_SUPABASE) {
     try {
-        $ch = curl_init(rtrim(SUPABASE_URL, '/') . '/rest/v1/orders?select=*&order=created_at.desc');
+        $backendUrl = 'http://localhost:3001/api/supabase/orders';
+        $ch = curl_init($backendUrl);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => [
-                'apikey: ' . SUPABASE_ANON_KEY,
-                'Authorization: Bearer ' . SUPABASE_ANON_KEY,
-                'Content-Type: application/json',
-            ],
+            CURLOPT_HTTPHEADER => [ 'Content-Type: application/json' ],
             CURLOPT_TIMEOUT => 15,
         ]);
         $resp = curl_exec($ch);

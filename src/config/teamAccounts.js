@@ -9,6 +9,13 @@ export const TEAM_ACCOUNTS = [
     role: 'admin',
     full_name: 'Jireh',
   },
+  {
+    username: 'jai',
+    email: 'jai@elyoo.com',
+    password: '212121',
+    role: 'staff',
+    full_name: 'Jai',
+  },
 ];
 
 const USERNAME_REGEX = /^[a-z][a-z0-9._-]{2,31}$/;
