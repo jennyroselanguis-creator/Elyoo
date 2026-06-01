@@ -406,40 +406,46 @@ export async function fetchOrders() {
   // If Supabase is not configured, return merged local orders only
   if (!isSupabaseConfigured()) return mergeAllOrders([]);
 
-  // Try server-side backend proxy first (uses service role key) so staff/admin see all orders.
-  try {
-    // Try a list of possible backend proxy hosts so dev setups on :3001 still work.
-    const candidates = [];
-    if (process.env.REACT_APP_BACKEND_URL) candidates.push(process.env.REACT_APP_BACKEND_URL);
-    if (typeof window !== 'undefined' && window.location) {
-      const proto = window.location.protocol;
-      const host = window.location.hostname;
-      candidates.push(`${proto}//${host}:3000`);
-      candidates.push(`${proto}//${host}:3001`);
-    }
-    candidates.push('http://localhost:3000');
-    candidates.push('http://localhost:3001');
+  const host = typeof window !== 'undefined' && window.location ? window.location.hostname : '';
+  const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host === '';
 
-    for (const c of candidates) {
-      if (!c) continue;
-      try {
-        const url = `${String(c).replace(/\/$/, '')}/api/supabase/orders`;
-        const resp = await fetch(url);
-        if (resp.ok) {
-          const rows = await resp.json();
-          return mergeAllOrders(rows || []);
-        }
-      } catch (err) {
-        // try next candidate
-        // eslint-disable-next-line no-console
-        console.debug('[Orders] backend proxy attempt failed for', c, err?.message || err);
+  if (isLocal) {
+    // Try server-side backend proxy first (uses service role key) so staff/admin see all orders.
+    try {
+      // Try a list of possible backend proxy hosts so dev setups on :3001 still work.
+      const candidates = [];
+      if (process.env.REACT_APP_BACKEND_URL) candidates.push(process.env.REACT_APP_BACKEND_URL);
+      if (typeof window !== 'undefined' && window.location) {
+        const proto = window.location.protocol;
+        candidates.push(`${proto}//${host}:3000`);
+        candidates.push(`${proto}//${host}:3001`);
       }
+      candidates.push('http://localhost:3000');
+      candidates.push('http://localhost:3001');
+
+      for (const c of candidates) {
+        if (!c) continue;
+        try {
+          const url = `${String(c).replace(/\/$/, '')}/api/supabase/orders`;
+          // Use an AbortController with a 2-second timeout to prevent connection hangs
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
+          const resp = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (resp.ok) {
+            const rows = await resp.json();
+            return mergeAllOrders(rows || []);
+          }
+        } catch (err) {
+          // try next candidate
+          // eslint-disable-next-line no-console
+          console.debug('[Orders] backend proxy attempt failed for', c, err?.message || err);
+        }
+      }
+      console.warn('[Orders] backend supabase proxy failed for all candidates');
+    } catch (err) {
+      console.warn('[Orders] backend supabase proxy error:', err?.message || err);
     }
-    console.warn('[Orders] backend supabase proxy failed for all candidates');
-    // Fall back to client-side Supabase fetch below
-  } catch (err) {
-    console.warn('[Orders] backend supabase proxy error:', err?.message || err);
-    // Fall back to client-side Supabase fetch below
   }
 
   const { data, error } = await supabase
