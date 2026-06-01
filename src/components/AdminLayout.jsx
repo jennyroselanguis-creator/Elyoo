@@ -21,7 +21,7 @@ const adminNavItems = [
 ];
 
 const staffNavItems = [
-  { to: '/admin/orders', label: 'Orders', icon: FiClipboard, end: true },
+  { to: '/admin', label: 'Orders', icon: FiClipboard, end: true },
 ];
 
 export default function AdminLayout() {

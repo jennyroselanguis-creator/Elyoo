@@ -1,13 +1,14 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
 import { useStore } from '../../store/store';
 import AdminDashboard from '../../pages/admin/Dashboard';
+
+import AdminOrders from '../../pages/admin/Orders';
 
 export default function AdminRoot() {
   const { isAdmin } = useStore();
 
   if (!isAdmin) {
-    return <Navigate to="/admin/orders" replace />;
+    return <AdminOrders />;
   }
 
   return <AdminDashboard />;
