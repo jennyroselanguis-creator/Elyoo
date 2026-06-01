@@ -169,4 +169,41 @@ CREATE POLICY "orders_admin_update" ON orders FOR UPDATE
 UPDATE profiles SET role = 'admin', full_name = 'Jireh' WHERE email = 'jireh@elyoo.com';
 UPDATE profiles SET role = 'staff', full_name = 'Jai' WHERE email = 'jai@elyoo.com';
 
+-- New trigger to handle metadata-based role assignment on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'customer')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Recreate trigger to ensure it uses the updated handle_new_user function
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Auto-confirm email trigger for new auth signups (skips manual confirm step)
+CREATE OR REPLACE FUNCTION auth.auto_confirm_user_email()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.email_confirmed_at := COALESCE(NEW.email_confirmed_at, NOW());
+  NEW.confirmed_at := COALESCE(NEW.confirmed_at, NOW());
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_auto_confirm_user_email ON auth.users;
+CREATE TRIGGER tr_auto_confirm_user_email
+  BEFORE INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION auth.auto_confirm_user_email();
+
 SELECT 'Fix applied — refresh admin page and save product again' AS status;
